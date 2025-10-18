@@ -19,7 +19,7 @@
 .type nameStr,%gnu_unique_object
     
 /*** STUDENTS: Change the next line to your name!  **/
-nameStr: .asciz "Inigo Montoya"  
+nameStr: .asciz "Amanda Earney"  
 
 .align   /* realign so that next mem allocations are on word boundaries */
  
@@ -84,7 +84,20 @@ final_Product:   .word     0
 asmUnpack:   
     
     /*** STUDENTS: Place your asmUnpack code BELOW this line!!! **************/
+    push {r4-r11, LR} /* store state of program according to calling convention */
     
+    MOV r3, r0 /* puts the packed value into r3 to unpack the value of A */
+    ASR r3, r3, 16 /* shifts the A value into the LSBs with sign extension */
+    
+    MOV r4, r0 /* puts the packed value into r4 to unpack the value of B */
+    LSL r4, r4, 16 /* shifts the LSBs into the MSBs to discard A's bits from B */
+    ASR r4, r4, 16 /* shifts the B value into the LSBs with sign extension */
+    
+    STR r3, [r1] /* puts the A value into the address specified by r1 */
+    STR r4, [r2] /* puts the B value into the address specified by r2 */
+    
+    pop {r4-r11, LR} /* restore state of program */
+    MOV PC, LR /* return to caller */
     /*** STUDENTS: Place your asmUnpack code ABOVE this line!!! **************/
 
 
@@ -102,8 +115,26 @@ asmUnpack:
 asmAbs:  
 
     /*** STUDENTS: Place your asmAbs code BELOW this line!!! **************/
+    push {r4-r11, LR} /* store state of program according to calling convention */
     
-
+    TST r0, 32768 /* tests the value of the sign bit */
+    BEQ positiveValue
+    
+    LDR r4, =1
+    STR r4, [r2] /* stores the correct sign bit into memory */
+    NEG r5, r0 /* negates the input value and stores it in r5 */
+    STR r5, [r1] /* stores the abs value into memory */
+    MOV r0, r5 /* puts the abs value into r0 to return */
+    B endAbs
+    
+positiveValue:
+    LDR r4, =0 
+    STR r4, [r2] /* stores the correct sign bit into memory */
+    STR r0, [r1] /* stores the abs value into memory */
+    
+endAbs:
+    pop {r4-r11, LR} /* restore state of program */
+    MOV PC, LR /* return to caller */
     /*** STUDENTS: Place your asmAbs code ABOVE this line!!! **************/
 
 
@@ -118,8 +149,23 @@ asmAbs:
 asmMult:   
 
     /*** STUDENTS: Place your asmMult code BELOW this line!!! **************/
-
-
+    push {r4-r11, LR} /* store state of program according to calling convention */
+    
+    LDR r4, =0 /* accumulated product will be stored in r4 */
+    
+loop: 
+    CBZ r1, endLoop /* ends the loop when the multiplier is 0 */
+    TST r1, 1 /* checks LSB of multiplier */
+    ADDNE r4, r4, r0 /* if the LSB is 1, adds the multiplicand to the product */
+    LSL r0, r0, 1 /* shifts the multiplicand to the left 1 bit */
+    LSR r1, r1, 1 /* shifts the multiplier to the right 1 bit */
+    B loop
+    
+endLoop:
+    MOV r0, r4 /* puts the product into r0 to return it */
+    
+    pop {r4-r11, LR} /* restore state of program */
+    MOV PC, LR /* return to caller */
     /*** STUDENTS: Place your asmMult code ABOVE this line!!! **************/
 
    
@@ -140,8 +186,16 @@ asmMult:
 asmFixSign:   
     
     /*** STUDENTS: Place your asmFixSign code BELOW this line!!! **************/
-
+    push {r4-r11, LR} /* store state of program according to calling convention */
     
+    EOR r3, r1, r2 /* puts 1 in r3 if product should be neg, 0 if should be pos */
+    CBZ r3, endFixSign /* if already positive, should return input */
+    
+    NEG r0, r0 /* negates the input and puts it back into r0 */
+    
+endFixSign:
+    pop {r4-r11, LR} /* restore state of program */
+    MOV PC, LR /* return to caller */
     /*** STUDENTS: Place your asmFixSign code ABOVE this line!!! **************/
 
 
@@ -165,26 +219,53 @@ asmFixSign:
 asmMain:   
     
     /*** STUDENTS: Place your asmMain code BELOW this line!!! **************/
+    push {r4-r11, LR} /* store state of program according to calling convention */
+    
+    LDR r2, =0 /* resets all variables to 0 */
+    LDR r3, =rng_Error
+    LDR r4, =a_Sign
+    LDR r5, =b_Sign
+    LDR r6, =prod_Is_Neg
+    LDR r7, =a_Abs
+    LDR r8, =b_Abs
+    LDR r9, =init_Product
+    LDR r10, =final_Product
+    STR r2, [r3]
+    STR r2, [r4]
+    STR r2, [r5]
+    STR r2, [r6]
+    STR r2, [r7]
+    STR r2, [r8]
+    STR r2, [r9]
+    STR r2, [r10]
     
     /* Step 1:
      * call asmUnpack. Have it store the output values in a_Multiplicand
      * and b_Multiplier.
      */
-
+    LDR r1, =a_Multiplicand /* prepares inputs */
+    LDR r2, =b_Multiplier
+    BL asmUnpack /* calls function */
 
      /* Step 2a:
       * call asmAbs for the multiplicand (a). Have it store the absolute value
       * in a_Abs, and the sign in a_Sign.
       */
-
-
-
+    LDR r1, =a_Multiplicand /* prepares inputs */
+    LDR r0, [r1] 
+    LDR r1, =a_Abs
+    LDR r2, =a_Sign
+    BL asmAbs /* calls function */
+    
      /* Step 2b:
       * call asmAbs for the multiplier (b). Have it store the absolute value
       * in b_Abs, and the sign in b_Sign.
       */
-
-
+    LDR r1, =b_Multiplier /* prepares inputs */
+    LDR r0, [r1] 
+    LDR r1, =b_Abs
+    LDR r2, =b_Sign
+    BL asmAbs /* calls function */
 
     /* Step 3:
      * call asmMult. Pass a_Abs as the multiplicand, 
@@ -193,7 +274,14 @@ asmMain:
      * In this function (asmMain), store the output value  
      * returned asmMult in r0 to mem location init_Product.
      */
-
+    LDR r2, =a_Abs /* prepares inputs */
+    LDR r0, [r2]
+    LDR r2, =b_Abs
+    LDR r1, [r2]
+    BL asmMult /* calls function */
+    
+    LDR r2, =init_Product /* stores the initial product found by asmMult */
+    STR r0, [r2] 
 
     /* Step 4:
      * call asmFixSign. Pass in the initial product, and the
@@ -202,7 +290,14 @@ asmMain:
      * sign. Store the value returned in r0 to mem location 
      * final_Product.
      */
-
+    LDR r3, =a_Sign /* prepares inputs */
+    LDR r1, [r3] 
+    LDR r4, =b_Sign
+    LDR r2, [r4] 
+    BL asmFixSign /* calls function */
+    
+    LDR r3, =final_Product 
+    STR r0, [r3] /* stores the final product returned by asmFixSign */
 
      /* Step 5:
       * END! Return to caller. Make sure of the following:
@@ -210,9 +305,8 @@ asmMain:
       * 2) the final answer is stored in r0, so that the C call 
       *    can access it.
       */
-
-
-    
+    pop {r4-r11, LR} /* restore state of program */
+    MOV PC, LR /* return to caller */
     /*** STUDENTS: Place your asmMain code ABOVE this line!!! **************/
 
 
